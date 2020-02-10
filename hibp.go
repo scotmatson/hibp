@@ -35,7 +35,7 @@ func checkBreachedAccountsFile(key, service, filename string) {
 		checked++
 		if len(b) > 0 {
 			pwned++
-			time.Sleep(1.5 * time.Second)
+			time.Sleep(1500 * time.Millisecond)
 		}
 	}
 	fmt.Printf("Accounts Checked: %d\n", checked)
