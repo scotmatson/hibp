@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 )
 
 func checkBreachedAccountsFile(key, service, filename string) {
@@ -34,6 +35,7 @@ func checkBreachedAccountsFile(key, service, filename string) {
 		checked++
 		if len(b) > 0 {
 			pwned++
+			time.Sleep(1.5 * time.Second)
 		}
 	}
 	fmt.Printf("Accounts Checked: %d\n", checked)
