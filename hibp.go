@@ -1,7 +1,10 @@
 package main
 
 import (
+	//"bufio"
+	"crypto/sha1"
 	"encoding/csv"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
@@ -13,6 +16,36 @@ import (
 	"strings"
 	"time"
 )
+
+func arePasswordsLeaked(key, filename string) {
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	r := csv.NewReader(file)
+
+	var checked int
+	var pwned int
+	for {
+		record, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		passwordHash := convertToSha1String(record[0])
+		leaked := isPasswordLeaked(key, passwordHash)
+		checked++
+		if leaked {
+			fmt.Printf("%v: %v %v", checked, record[0], "has been leaked!!!\n")
+			pwned++
+		}
+	}
+	fmt.Printf("Passwords Checked: %d\n", checked)
+	fmt.Printf("Passwords Leaked: %d", pwned)
+}
 
 func checkBreachedAccountsFile(key, service, filename string) {
 	file, err := os.Open(filename)
@@ -34,6 +67,7 @@ func checkBreachedAccountsFile(key, service, filename string) {
 		b := checkBreachedAccount(key, service, record[0])
 		checked++
 		if len(b) > 0 {
+			fmt.Printf("%v: %v %v", checked, record[0], "has been pwned!!!\n")
 			pwned++
 			time.Sleep(1500 * time.Millisecond)
 		}
@@ -42,17 +76,19 @@ func checkBreachedAccountsFile(key, service, filename string) {
 	fmt.Printf("Accounts Pwned: %d", pwned)
 }
 
+// Requests to the breaches and pastes APIs are limited to one per every 1500 milliseconds
 func checkBreachedAccount(key, service, account string) []byte {
 	// TODO { "statusCode": 429, "message": "Rate limit is exceeded. Try again in 30 seconds." }
 	apiUrl := "https://haveibeenpwned.com/api/v3/{service}/{account}"
 	apiUrl = strings.Replace(apiUrl, "{service}", service, 1)
 	apiUrl = strings.Replace(apiUrl, "{account}", url.QueryEscape(account), 1)
-	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", apiUrl, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	client := &http.Client{}
 	req.Header.Add("hibp-api-key", key)
 	res, err := client.Do(req)
 	if err != nil {
@@ -67,11 +103,41 @@ func checkBreachedAccount(key, service, account string) []byte {
 	return b
 }
 
-/*
-func hash_checker() () {
-	apiUrl := "GET https://api.pwnedpasswords.com/range/{first 5 hash chars}"
+// Convert a String into a sha1 hash String.
+func convertToSha1String(s string) string {
+	bs := []byte(s)
+	sha1Bytes := sha1.Sum(bs)
+	return hex.EncodeToString(sha1Bytes[:])
 }
-*/
+
+// There is no rate limit on the Pwned Passwords API.
+func isPasswordLeaked(key, passwordHash string) bool {
+	apiUrl := "https://api.pwnedpasswords.com/range/{first 5 hash chars}"
+	apiUrl = strings.Replace(apiUrl, "{first 5 hash chars}", passwordHash[:5], 1)
+
+	req, err := http.NewRequest("GET", apiUrl, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Add("hibp-api-key", key)
+
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	b, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return strings.Contains(
+		strings.ToLower(string(b)),
+		strings.ToLower(passwordHash[5:]),
+	)
+}
 
 func main() {
 	fmt.Println("*-----------------------*")
@@ -108,9 +174,19 @@ func main() {
 		} else {
 			checkBreachedAccountsFile(*key, service, *filename)
 		}
-
 	case "password":
-		fmt.Println("Not yet implemented.")
+		if *filename == "" {
+			if (len(flag.Args())) < 1 {
+				log.Fatal("No account given.")
+			}
+			passwordHash := convertToSha1String(flag.Args()[0])
+			leaked := isPasswordLeaked(*key, passwordHash)
+			if leaked {
+				fmt.Println(passwordHash, "has been leaked.")
+			}
+		} else {
+			arePasswordsLeaked(*key, *filename)
+		}
 	default:
 		fmt.Println("This will output a help menu.")
 	}
