@@ -164,7 +164,6 @@ func main() {
 				log.Fatal("No account given.")
 			}
 			b := checkBreachedAccount(*key, service, flag.Args()[0])
-			s := string(b)
 			fmt.Printf("%s", b)
 		} else {
 			checkBreachedAccountsFile(*key, service, *filename)
