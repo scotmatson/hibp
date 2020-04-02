@@ -1,7 +1,6 @@
 package main
 
 import (
-	//"bufio"
 	"crypto/sha1"
 	"encoding/csv"
 	"encoding/hex"
@@ -70,7 +69,6 @@ func checkBreachedAccountsFile(key, service, filename string) {
 			fmt.Printf("%d: %s - %s\n", checked, record[0], b)
 			pwned++
 		} else {
-			//
 			fmt.Printf("%d: %s - []\n", checked, record[0])
 		}
 		time.Sleep(1500 * time.Millisecond)
@@ -81,7 +79,6 @@ func checkBreachedAccountsFile(key, service, filename string) {
 
 // Requests to the breaches and pastes APIs are limited to one per every 1500 milliseconds
 func checkBreachedAccount(key, service, account string) []byte {
-	// TODO { "statusCode": 401, "message": "Access denied due to invalid hibp-api-key." }
 	// TODO { "statusCode": 429, "message": "Rate limit is exceeded. Try again in 30 seconds." }
 	apiUrl := "https://haveibeenpwned.com/api/v3/{service}/{account}"
 	apiUrl = strings.Replace(apiUrl, "{service}", service, 1)
@@ -98,12 +95,18 @@ func checkBreachedAccount(key, service, account string) []byte {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer res.Body.Close()
 
-	b, err := ioutil.ReadAll(res.Body) // Not memory efficient
-	res.Body.Close()
+	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// { "statusCode": 401, "message": "Access denied due to invalid hibp-api-key." }
+	if res.StatusCode == 401 {
+		log.Fatalf("%s\n", b)
+	}
+
 	return b
 }
 
@@ -162,7 +165,7 @@ func main() {
 			}
 			b := checkBreachedAccount(*key, service, flag.Args()[0])
 			s := string(b)
-			fmt.Println(s)
+			fmt.Printf("%s", b)
 		} else {
 			checkBreachedAccountsFile(*key, service, *filename)
 		}
@@ -173,8 +176,7 @@ func main() {
 				log.Fatal("No account given.")
 			}
 			b := checkBreachedAccount(*key, service, flag.Args()[0])
-			s := string(b)
-			fmt.Println(s)
+			fmt.Printf("%s", b)
 		} else {
 			checkBreachedAccountsFile(*key, service, *filename)
 		}
