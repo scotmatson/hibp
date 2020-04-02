@@ -67,10 +67,13 @@ func checkBreachedAccountsFile(key, service, filename string) {
 		b := checkBreachedAccount(key, service, record[0])
 		checked++
 		if len(b) > 0 {
-			fmt.Printf("%v: %v %v", checked, record[0], "has been pwned!!!\n")
+			fmt.Printf("%d: %s - %s\n", checked, record[0], b)
 			pwned++
-			time.Sleep(1500 * time.Millisecond)
+		} else {
+			//
+			fmt.Printf("%d: %s - []\n", checked, record[0])
 		}
+		time.Sleep(1500 * time.Millisecond)
 	}
 	fmt.Printf("Accounts Checked: %d\n", checked)
 	fmt.Printf("Accounts Pwned: %d", pwned)
@@ -78,6 +81,7 @@ func checkBreachedAccountsFile(key, service, filename string) {
 
 // Requests to the breaches and pastes APIs are limited to one per every 1500 milliseconds
 func checkBreachedAccount(key, service, account string) []byte {
+	// TODO { "statusCode": 401, "message": "Access denied due to invalid hibp-api-key." }
 	// TODO { "statusCode": 429, "message": "Rate limit is exceeded. Try again in 30 seconds." }
 	apiUrl := "https://haveibeenpwned.com/api/v3/{service}/{account}"
 	apiUrl = strings.Replace(apiUrl, "{service}", service, 1)
