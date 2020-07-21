@@ -79,7 +79,6 @@ func checkBreachedAccountsFile(key, service, filename string) {
 
 // Requests to the breaches and pastes APIs are limited to one per every 1500 milliseconds
 func checkBreachedAccount(key, service, account string) []byte {
-	// TODO { "statusCode": 429, "message": "Rate limit is exceeded. Try again in 30 seconds." }
 	apiUrl := "https://haveibeenpwned.com/api/v3/{service}/{account}"
 	apiUrl = strings.Replace(apiUrl, "{service}", service, 1)
 	apiUrl = strings.Replace(apiUrl, "{account}", url.QueryEscape(account), 1)
@@ -89,24 +88,36 @@ func checkBreachedAccount(key, service, account string) []byte {
 		log.Fatal(err)
 	}
 
-	client := &http.Client{}
-	req.Header.Add("hibp-api-key", key)
-	res, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer res.Body.Close()
+	for ok := true; ok; !ok {
 
-	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Fatal(err)
+		client := &http.Client{}
+		req.Header.Add("hibp-api-key", key)
+
+		res, err := client.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		b, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	    // { "statusCode": 429, "message": "Rate limit is exceeded. Try again in 30 seconds." }
+		if res.StatusCode == 429 {
+		    log.Print("%s\n", b)
+			fmt.Print("Sleeping for 30 seconds...")
+			time.Sleep(30 * time.Second)
+			fmt.Println("retrying")
+			ok = false
+		}
 	}
 
 	// { "statusCode": 401, "message": "Access denied due to invalid hibp-api-key." }
 	if res.StatusCode == 401 {
 		log.Fatalf("%s\n", b)
 	}
-
+	defer res.Body.Close()
 	return b
 }
 
