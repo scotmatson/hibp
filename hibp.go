@@ -88,24 +88,26 @@ func checkBreachedAccount(key, service, account string) []byte {
 		log.Fatal(err)
 	}
 
-	for ok := true; ok; !ok {
+	client := &http.Client{}
+	req.Header.Add("hibp-api-key", key)
 
-		client := &http.Client{}
-		req.Header.Add("hibp-api-key", key)
-
+	var res http.Response
+	var b []byte
+	for ok := true; ok; ok = !ok {
 		res, err := client.Do(req)
 		if err != nil {
 			log.Fatal(err)
 		}
+		defer res.Body.Close()
 
 		b, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-	    // { "statusCode": 429, "message": "Rate limit is exceeded. Try again in 30 seconds." }
+		// { "statusCode": 429, "message": "Rate limit is exceeded. Try again in 30 seconds." }
 		if res.StatusCode == 429 {
-		    log.Print("%s\n", b)
+			log.Printf("%s\n", b)
 			fmt.Print("Sleeping for 30 seconds...")
 			time.Sleep(30 * time.Second)
 			fmt.Println("retrying")
@@ -117,7 +119,7 @@ func checkBreachedAccount(key, service, account string) []byte {
 	if res.StatusCode == 401 {
 		log.Fatalf("%s\n", b)
 	}
-	defer res.Body.Close()
+
 	return b
 }
 
