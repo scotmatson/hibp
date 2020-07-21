@@ -1,3 +1,3 @@
-module gitlab.com/zulily.com/infosec/hibp
+module github.com/scotmatson.com/hibp
 
 go 1.13
