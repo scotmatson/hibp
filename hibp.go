@@ -91,16 +91,16 @@ func checkBreachedAccount(key, service, account string) []byte {
 	client := &http.Client{}
 	req.Header.Add("hibp-api-key", key)
 
-	var res http.Response
+	var res *http.Response
 	var b []byte
 	for ok := true; ok; ok = !ok {
-		res, err := client.Do(req)
+		res, err = client.Do(req)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer res.Body.Close()
 
-		b, err := ioutil.ReadAll(res.Body)
+		b, err = ioutil.ReadAll(res.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
